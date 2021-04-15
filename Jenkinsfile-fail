@@ -1,7 +1,8 @@
 pipeline {
+    agent any
     stages("Greet") {
         steps {
-            sh "echo 'Hello, Jenkins!' && exit 1"
+            sh 'echo "Hello, Jenkins!" && exit 1'
         }
     }
 }
