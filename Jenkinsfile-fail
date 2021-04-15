@@ -1,5 +1,5 @@
 pipeline {
-    stage("Greet") {
+    stages("Greet") {
         steps {
             sh "echo 'Hello, Jenkins!' && exit 1"
         }
