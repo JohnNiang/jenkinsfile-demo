@@ -6,7 +6,7 @@ pipeline {
     stages {
         stage('Echo') { 
             steps {
-              sh 'echo "Hello, Jenkins!, result=${result}"'
+              sh 'echo "Hello, Jenkins!, refresh=${refresh}"'
             }
         }
     }
