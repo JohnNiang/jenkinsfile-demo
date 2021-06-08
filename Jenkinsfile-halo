@@ -1,0 +1,45 @@
+pipeline {
+  agent {
+    kubernetes {
+      label 'gradle'
+      yaml '''apiVersion: v1
+kind: Pod
+spec:
+  containers:
+    - name: gradle
+      image: gradle:6.9.0-jdk11
+      command:
+        - \'cat\'
+      tty: true
+      resourceRequestCpu: "100m"
+      resourceLimitCpu: "4000m"
+      resourceRequestMemory: "100Mi"
+      resourceLimitMemory: "8192Mi"'''
+    }
+
+  }
+  stages {
+    stage('halo-test') {
+      agent none
+      steps {
+        git(url: 'https://github.com/halo-dev/halo.git', branch: 'master', changelog: true, poll: false)
+        container('gradle') {
+          sh 'gradle check'
+        }
+
+      }
+    }
+
+    stage('halo-build') {
+      agent none
+      steps {
+        container('gradle') {
+          sh 'gradle build'
+        }
+
+      }
+    }
+
+  }
+}
+
