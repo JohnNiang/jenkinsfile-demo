@@ -26,7 +26,6 @@ spec:
         container('gradle') {
           sh 'gradle check'
         }
-
       }
     }
 
