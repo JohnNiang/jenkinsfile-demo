@@ -4,13 +4,12 @@ metadata:
   name: halo-volume
   namespace: $NAMESPACE
   annotations:
-    kubesphere.io/creator: "admin"
+    kubesphere.io/creator: "$USER"
 spec:
   accessModes:
     - ReadWriteOnce
   resources:
     requests:
       storage: 1Gi
-  volumeName: halo-pvc
   storageClassName: csi-standard
 
