@@ -1,31 +1,39 @@
 pipeline {
   agent {
-    kubernetes {
+    node {
       label 'gradle'
-      yaml '''apiVersion: v1
-kind: Pod
-spec:
-  containers:
-    - name: gradle
-      image: gradle:6.9.0-jdk11
-      command:
-        - \'cat\'
-      tty: true
-      resourceRequestCpu: "100m"
-      resourceLimitCpu: "4000m"
-      resourceRequestMemory: "100Mi"
-      resourceLimitMemory: "8192Mi"'''
     }
-
+  }
+  environment {
+    GRADLE_CACHE = '/var/data/jenkins_gradle_cache'
   }
   stages {
-    stage('halo-test') {
+    stage('halo clone') {
       agent none
       steps {
         git(url: 'https://github.com/halo-dev/halo.git', branch: 'master', changelog: true, poll: false)
+        sh 'git submodule update --init --recursive'
+      }
+    }
+    
+    stage('prepare gradle cache') {
+      agent none
+      steps {
+        container('gradle') {
+          sh 'apt-get update -y && apt-get install -y rsync'
+          // Copy the Gradle cache from the host, so we can write to it
+          sh 'rsync -a --include /caches --include /wrapper --exclude "/*" ${GRADLE_CACHE}/ ${HOME}/.gradle || true'
+        }
+      }
+    }
+
+    stage('halo test') {
+      agent none
+      steps {
         container('gradle') {
           sh 'gradle check'
         }
+
       }
     }
 
@@ -39,6 +47,13 @@ spec:
       }
     }
 
+  }
+  
+  post {
+    success {
+      // Write updates to the Gradle cache back to the host
+      sh 'rsync -au ${HOME}/.gradle/caches ${HOME}/.gradle/wrapper ${GRADLE_CACHE}/ || true'
+    }
   }
 }
 
