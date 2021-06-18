@@ -4,10 +4,26 @@ pipeline {
       label 'gradle'
     }
   }
-  environment {
-    GRADLE_CACHE = '/var/data/jenkins_gradle_cache'
+  
+  parameters {
+    string(name: 'USER', defaultValue: '00', description: 'Current login user.')
+    string(name: 'NAMESPACE', defaultValue: '', description: 'Deployment project name or namespace.')
   }
+  
   stages {
+    stage('debug') {
+      agent none
+      steps {
+        echo "$params.USER"
+        echo "$USER"
+        sh 'echo $USER'
+        sh """# Debug parameters
+echo ${params.USER}
+echo ${params.NAMESPACE}
+echo ${GRADLE_CACHE}"""
+      }
+    }
+
     stage('halo clone') {
       agent none
       steps {
@@ -15,15 +31,15 @@ pipeline {
         sh 'git submodule update --init --recursive'
       }
     }
-    
+
     stage('prepare gradle cache') {
       agent none
       steps {
         container('gradle') {
-          sh 'apt-get update -y && apt-get install -y rsync'
-          // Copy the Gradle cache from the host, so we can write to it
+          sh 'apt-get update -y && apt-get install -y rsync gpg'
           sh 'rsync -a --include /caches --include /wrapper --exclude "/*" ${GRADLE_CACHE}/ ${HOME}/.gradle || true'
         }
+
       }
     }
 
@@ -31,7 +47,7 @@ pipeline {
       agent none
       steps {
         container('gradle') {
-          sh 'gradle check'
+          sh 'gradle clean check -x test'
         }
 
       }
@@ -41,19 +57,46 @@ pipeline {
       agent none
       steps {
         container('gradle') {
-          sh 'gradle build'
+          sh 'gradle build -x test'
+          sh """rm build/libs/halo-*-plain.jar
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
+echo \\
+  "deb [arch=amd64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu \\
+  focal stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
+apt-get update -y
+apt-get install -y docker-ce-cli
+docker build -t johnniang/halo-$params.USER:$BUILD_NUMBER ."""
+          withCredentials([usernamePassword(credentialsId : 'dockerhub-id' ,passwordVariable : 'DOCKER_PASSWORD' ,usernameVariable : 'DOCKER_USERNAME' ,)]) {
+            sh """echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
+docker push  johnniang/halo-$params.USER:$BUILD_NUMBER"""
+          }
+
+          archiveArtifacts '**/build/libs/*.jar'
         }
 
       }
     }
 
+    stage('deploy') {
+      agent none
+      steps {
+        input(message: "Deploy halo? @$params.USER", submitter: "$params.USER")
+        git(url: 'https://github.com/JohnNiang/jenkinsfile-demo.git', branch: 'main', changelog: true, poll: false)
+        sh "ls -lah"
+        kubernetesDeploy(enableConfigSubstitution: true, deleteResource: false, configs: 'deploy-halo/**', kubeconfigId: 'kubeconfig-id')
+      }
+    }
+
   }
-  
+  environment {
+    GRADLE_CACHE = '/var/data/jenkins_gradle_cache'
+  }
   post {
     success {
-      // Write updates to the Gradle cache back to the host
       sh 'rsync -au ${HOME}/.gradle/caches ${HOME}/.gradle/wrapper ${GRADLE_CACHE}/ || true'
     }
+
   }
+
 }
 
