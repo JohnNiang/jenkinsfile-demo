@@ -14,12 +14,9 @@ spec:
       version: v1
   template:
     metadata:
-      creationTimestamp: null
       labels:
         app: halo-service
         version: v1
-      annotations:
-        logging.kubesphere.io/logsidecar-config: '{}'
     spec:
       volumes:
         - name: volume-1qyeu6
@@ -32,7 +29,6 @@ spec:
             - name: http-halo
               containerPort: 8090
               protocol: TCP
-          resources: {}
           volumeMounts:
             - name: volume-1qyeu6
               mountPath: /root/.halo
@@ -64,8 +60,6 @@ spec:
       dnsPolicy: ClusterFirst
       serviceAccountName: default
       serviceAccount: default
-      securityContext: {}
-      affinity: {}
       schedulerName: default-scheduler
   strategy:
     type: RollingUpdate

@@ -4,9 +4,6 @@ metadata:
   name: halo-volume
   namespace: $NAMESPACE
   annotations:
-    kubesphere.io/creator: admin
-    pv.kubernetes.io/bind-completed: 'yes'
-    pv.kubernetes.io/bound-by-controller: 'yes'
     volume.beta.kubernetes.io/storage-provisioner: csi-qingcloud
   finalizers:
     - kubernetes.io/pvc-protection
